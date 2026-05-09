@@ -2,31 +2,37 @@
 // QUIZ-UI.JS — Quiz cards, gameplay, builder
 // ============================================
 import { db } from "./firebase.js";
-const QuizUI = {async loadQuizzes() {
-  const { collection, getDocs } = await import(
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-  );
 
-  const snap = await getDocs(collection(db, "quizzes"));
+const QuizUI = {
 
-  AppState.mockQuizzes = snap.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+  async loadQuizzes() {
+    const { collection, getDocs } = await import(
+      "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+    );
 
-  this.renderHomeQuizzes();
-  this.renderExploreQuizzes();
-}
+    const snap = await getDocs(collection(db, "quizzes"));
+
+    AppState.mockQuizzes = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    this.renderHomeQuizzes();
+    this.renderExploreQuizzes();
+  },
+
   init() {
-  this.loadQuizzes(); // 👈 ADD THIS LINE FIRST
+    this.loadQuizzes();
 
-  this.renderHomeQuizzes();
-  this.renderExploreQuizzes();
-  this.initBuilder();
-  this.initGameplay();
-  this.initFilters();
-  this.initSearch();
-}
+    this.renderHomeQuizzes();
+    this.renderExploreQuizzes();
+    this.initBuilder();
+    this.initGameplay();
+    this.initFilters();
+    this.initSearch();
+  },
+
+};
 
   // ── CARD RENDERER ──
   buildCard(quiz) {
