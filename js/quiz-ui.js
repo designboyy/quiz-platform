@@ -30,9 +30,11 @@ const QuizUI = {
     this.initGameplay();
     this.initFilters();
     this.initSearch();
-  },
+  }
 
 };
+
+window.QuizUI = QuizUI;
 
   // ── CARD RENDERER ──
   buildCard(quiz) {
