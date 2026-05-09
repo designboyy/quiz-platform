@@ -1,7 +1,15 @@
-// ============================================
 // APP.JS — Main entry point, boots everything
 // ============================================
-
+import "./state.js";
+import "./theme.js";
+import "./animations.js";
+import "./modal.js";
+import "./auth-ui.js";
+import "./quiz-ui.js";
+import "./leaderboard-ui.js";
+import "./profile-ui.js";
+import "./settings-ui.js";
+import "./navigation.js";
 document.addEventListener('DOMContentLoaded', () => {
 
   // 1. Theme first (prevents flash of wrong theme)

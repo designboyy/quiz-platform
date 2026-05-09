@@ -1,7 +1,7 @@
 // ============================================
 // QUIZ-UI.JS — Quiz cards, gameplay, builder
 // ============================================
-
+import { db } from "./firebase.js";
 const QuizUI = {
   init() {
     this.renderHomeQuizzes();
@@ -270,10 +270,34 @@ const QuizUI = {
       if (preview) preview.textContent = e.target.value || 'Untitled Quiz';
       AppState.builderQuiz.title = e.target.value;
     });
-    document.getElementById('publish-quiz-btn')?.addEventListener('click', () => {
-      Toast.show('Quiz published! (Firebase will save this to Firestore)', 'success');
-    });
+    document.getElementById('publish-quiz-btn')?.addEventListener('click', async () => {
 
+  try {
+
+    const title = document.getElementById('quiz-title')?.value || 'Untitled Quiz';
+
+    const quizData = {
+      title,
+      createdAt: Date.now()
+    };
+
+    const { collection, addDoc } = await import(
+      "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+    );
+
+    await addDoc(collection(db, "quizzes"), quizData);
+
+    Toast.show('Quiz published successfully! 🚀', 'success');
+
+  } catch (err) {
+
+    console.error(err);
+
+    Toast.show('Failed to save quiz', 'error');
+
+  }
+
+});
     // Add initial question
     this.addQuestion();
   },

@@ -1,10 +1,14 @@
-import { auth, googleProvider } from './firebase-config.js';
+import { auth } from "./firebase.js";
+
 import {
+  GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithPopup
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const googleProvider = new GoogleAuthProvider();
 
 const AuthUI = {
   init() {
