@@ -1,7 +1,10 @@
-// ============================================
-// AUTH-UI.JS — Auth form handling
-// Firebase Auth will plug in here later
-// ============================================
+import { auth, googleProvider } from './firebase-config.js';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signInWithPopup
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const AuthUI = {
   init() {
@@ -14,7 +17,6 @@ const AuthUI = {
     this.bindGoogleButtons();
   },
 
-  // Show a specific sub-form
   showForm(form) {
     ['login', 'signup', 'forgot'].forEach(f => {
       const el = document.getElementById(`${f}-form-container`);
@@ -30,57 +32,75 @@ const AuthUI = {
   },
 
   bindLoginForm() {
-    document.getElementById('login-form')?.addEventListener('submit', (e) => {
+    document.getElementById('login-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!this.validateLogin()) return;
-
       const btn = document.getElementById('login-submit-btn');
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
       this.setLoading(btn, true);
-
-      // TODO: Replace with Firebase Auth signInWithEmailAndPassword
-      setTimeout(() => {
-        this.setLoading(btn, false);
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
         window.Navigation.goToApp();
-        Toast.show('Welcome back, Fiyebo! 👋', 'success');
-      }, 1200);
+        Toast.show('Welcome back! 👋', 'success');
+      } catch (err) {
+        Toast.show(this.friendlyError(err.code), 'error');
+        this.setLoading(btn, false);
+      }
     });
   },
 
   bindSignupForm() {
-    document.getElementById('signup-form')?.addEventListener('submit', (e) => {
+    document.getElementById('signup-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!this.validateSignup()) return;
-
       const btn = document.getElementById('signup-submit-btn');
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
       this.setLoading(btn, true);
-
-      // TODO: Replace with Firebase Auth createUserWithEmailAndPassword
-      setTimeout(() => {
-        this.setLoading(btn, false);
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
         window.Navigation.goToApp();
-        Toast.show('Account created! Welcome to QuizForge 🚀', 'success');
-      }, 1400);
+        Toast.show('Account created! Welcome 🚀', 'success');
+      } catch (err) {
+        Toast.show(this.friendlyError(err.code), 'error');
+        this.setLoading(btn, false);
+      }
     });
   },
 
   bindForgotForm() {
-    document.getElementById('forgot-form')?.addEventListener('submit', (e) => {
+    document.getElementById('forgot-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('forgot-email').value;
+      const email = document.getElementById('forgot-email').value.trim();
       if (!email) {
         this.showFieldError('forgot-email-error', 'Please enter your email address');
         return;
       }
-
       const btn = document.getElementById('forgot-submit-btn');
       this.setLoading(btn, true);
-
-      // TODO: Replace with Firebase Auth sendPasswordResetEmail
-      setTimeout(() => {
-        this.setLoading(btn, false);
+      try {
+        await sendPasswordResetEmail(auth, email);
         Toast.show('Reset link sent! Check your inbox.', 'success');
         this.showForm('login');
-      }, 1000);
+      } catch (err) {
+        Toast.show(this.friendlyError(err.code), 'error');
+      }
+      this.setLoading(btn, false);
+    });
+  },
+
+  bindGoogleButtons() {
+    ['google-login-btn', 'google-signup-btn'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', async () => {
+        try {
+          await signInWithPopup(auth, googleProvider);
+          window.Navigation.goToApp();
+          Toast.show('Signed in with Google! 🎉', 'success');
+        } catch (err) {
+          Toast.show(this.friendlyError(err.code), 'error');
+        }
+      });
     });
   },
 
@@ -100,10 +120,8 @@ const AuthUI = {
   bindPasswordStrength() {
     const input = document.getElementById('signup-password');
     if (!input) return;
-
     input.addEventListener('input', () => {
-      const val = input.value;
-      const score = this.getStrengthScore(val);
+      const score = this.getStrengthScore(input.value);
       this.renderStrength(score);
     });
   },
@@ -120,38 +138,24 @@ const AuthUI = {
   renderStrength(score) {
     const bars = [1,2,3,4].map(i => document.getElementById(`strength-${i}`));
     const label = document.getElementById('strength-label');
-    const levels = ['', 'weak', 'fair', 'strong', 'strong'];
     const colors = ['', 'active-weak', 'active-fair', 'active-strong', 'active-strong'];
     const labels = ['Enter a password', 'Too weak', 'Getting there', 'Strong password', 'Very strong!'];
-
     bars.forEach((bar, i) => {
       if (!bar) return;
       bar.className = 'strength-bar';
       if (i < score) bar.classList.add(colors[score]);
     });
-
     if (label) {
       label.textContent = labels[score];
       label.style.color = score <= 1 ? 'var(--brand-danger)' : score === 2 ? 'var(--brand-warning)' : 'var(--brand-success)';
     }
   },
 
-  bindGoogleButtons() {
-    ['google-login-btn', 'google-signup-btn'].forEach(id => {
-      document.getElementById(id)?.addEventListener('click', () => {
-        // TODO: Replace with Firebase Auth signInWithPopup(GoogleAuthProvider)
-        Toast.show('Google auth will be connected via Firebase soon!', 'info');
-      });
-    });
-  },
-
   validateLogin() {
     let valid = true;
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-
     this.clearErrors();
-
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       this.showFieldError('login-email-error', 'Please enter a valid email address');
       valid = false;
@@ -169,9 +173,7 @@ const AuthUI = {
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const confirm = document.getElementById('signup-confirm-password').value;
-
     this.clearErrors();
-
     if (!username || username.length < 3) {
       this.showFieldError('signup-username-error', 'Username must be at least 3 characters');
       valid = false;
@@ -196,8 +198,6 @@ const AuthUI = {
     if (!el) return;
     el.textContent = '⚠ ' + message;
     el.classList.remove('hidden');
-    const input = el.previousElementSibling?.querySelector('input') || el.parentElement?.querySelector('input');
-    if (input) input.classList.add('error');
   },
 
   clearErrors() {
@@ -220,6 +220,20 @@ const AuthUI = {
       btn.disabled = false;
       btn.style.opacity = '1';
     }
+  },
+
+  friendlyError(code) {
+    const messages = {
+      'auth/user-not-found': 'No account found with this email',
+      'auth/wrong-password': 'Incorrect password',
+      'auth/email-already-in-use': 'An account with this email already exists',
+      'auth/weak-password': 'Password should be at least 6 characters',
+      'auth/invalid-email': 'Please enter a valid email address',
+      'auth/popup-closed-by-user': 'Google sign in was cancelled',
+      'auth/network-request-failed': 'Network error, check your connection',
+      'auth/too-many-requests': 'Too many attempts, please try again later'
+    };
+    return messages[code] || 'Something went wrong, please try again';
   }
 };
 
