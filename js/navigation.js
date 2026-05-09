@@ -43,35 +43,29 @@ const Navigation = {
     shell.style.display = 'flex';
     shell.classList.add('visible');
     this.switchSection('home');
+    // Refresh data for the logged-in user
+    if (window.QuizUI) QuizUI.loadQuizzes();
+    if (window.LeaderboardUI) LeaderboardUI.loadLeaderboard();
+    if (window.ProfileUI) ProfileUI.loadProfile();
+    if (window.DashboardUI) DashboardUI.loadStats();
   },
 
   switchSection(section) {
-    // Hide all sections
     document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active'));
-    // Show target
     const target = document.getElementById(`section-${section}`);
     if (target) target.classList.add('active');
-
-    // Update sidebar active state
     document.querySelectorAll('.sidebar-link').forEach(link => {
       link.classList.toggle('active', link.dataset.section === section);
     });
-
-    // Update header title
     const titleEl = document.getElementById('section-title');
     if (titleEl) titleEl.textContent = this.sectionTitles[section] || section;
-
     AppState.currentSection = section;
-
-    // Close mobile sidebar if open
     this.closeMobileSidebar();
   },
 
   bindSidebarLinks() {
     document.querySelectorAll('.sidebar-link[data-section]').forEach(link => {
-      link.addEventListener('click', () => {
-        this.switchSection(link.dataset.section);
-      });
+      link.addEventListener('click', () => this.switchSection(link.dataset.section));
     });
   },
 
@@ -79,7 +73,6 @@ const Navigation = {
     const btn = document.getElementById('sidebar-toggle-btn');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-
     btn?.addEventListener('click', () => {
       const open = sidebar.classList.toggle('open');
       if (overlay) overlay.style.display = open ? 'block' : 'none';
@@ -87,9 +80,7 @@ const Navigation = {
   },
 
   bindSidebarOverlay() {
-    document.getElementById('sidebar-overlay')?.addEventListener('click', () => {
-      this.closeMobileSidebar();
-    });
+    document.getElementById('sidebar-overlay')?.addEventListener('click', () => this.closeMobileSidebar());
   },
 
   closeMobileSidebar() {
@@ -106,6 +97,5 @@ const Navigation = {
   }
 };
 
-// Global shortcut used by inline onclick handlers
 window.navigateTo = (section) => Navigation.switchSection(section);
 window.Navigation = Navigation;

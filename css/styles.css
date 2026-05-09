@@ -2280,3 +2280,51 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); line-height: 1.2; }
   .auth-panel { padding: var(--space-xl) var(--space-md); }
   .welcome-banner { flex-direction: column; gap: var(--space-md); text-align: center; }
 }
+/* =============================================
+   QUIZ GAMEPLAY — MISSING STATES (FIXED)
+   ============================================= */
+
+/* Timer warning state */
+.timer-display.timer-warning {
+  background: rgba(255, 71, 87, 0.15);
+  border-color: var(--brand-danger);
+  color: var(--brand-danger);
+  animation: timerPulse 0.5s ease infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Quiz card cover overlay */
+.quiz-card-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.35) 100%);
+  border-radius: inherit;
+}
+
+/* Leaderboard current user highlight */
+.podium-item.is-current-user .podium-avatar {
+  box-shadow: 0 0 0 3px var(--brand-primary);
+}
+
+/* Loading pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Builder question radio alignment */
+.quiz-meta-card input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand-primary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* Option correct/incorrect override for letter badge */
+.option-btn.correct .option-letter { background: var(--brand-success); color: #fff; }
+.option-btn.incorrect .option-letter { background: var(--brand-danger); color: #fff; }

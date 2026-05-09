@@ -1,12 +1,20 @@
-import { auth } from "./firebase.js";
-
+import { auth, db } from "./firebase.js";
 import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-  signInWithPopup
+  signInWithPopup,
+  signOut,
+  updatePassword,
+  deleteUser,
+  onAuthStateChanged,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  doc, setDoc, getDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -19,6 +27,99 @@ const AuthUI = {
     this.bindPasswordToggles();
     this.bindPasswordStrength();
     this.bindGoogleButtons();
+    this.watchAuthState();
+  },
+
+  // =====================
+  // AUTH STATE LISTENER
+  // =====================
+  watchAuthState() {
+    onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        AppState.user = firebaseUser;
+        AppState.isAuthenticated = true;
+        await this.syncUserToState(firebaseUser);
+        // If we're on landing or auth page, go to app
+        const appShell = document.getElementById('app-shell');
+        const isInApp = appShell && appShell.style.display === 'flex';
+        if (!isInApp) {
+          window.Navigation.goToApp();
+        } else {
+          // Already in app, refresh user displays
+          this.updateUserUI();
+        }
+      } else {
+        AppState.user = null;
+        AppState.isAuthenticated = false;
+      }
+    });
+  },
+
+  // Pull or create user doc in Firestore
+  async syncUserToState(firebaseUser) {
+    try {
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        AppState.userProfile = snap.data();
+      } else {
+        // New user — create their document
+        const newProfile = {
+          uid: firebaseUser.uid,
+          username: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          email: firebaseUser.email,
+          avatar: (firebaseUser.displayName || firebaseUser.email).substring(0, 2).toUpperCase(),
+          level: 1,
+          xp: 0,
+          streak: 0,
+          rank: null,
+          quizzesPlayed: 0,
+          quizzesCreated: 0,
+          avgScore: 0,
+          createdAt: serverTimestamp()
+        };
+        await setDoc(userRef, newProfile);
+        AppState.userProfile = newProfile;
+      }
+      this.updateUserUI();
+    } catch (err) {
+      console.error('Failed to sync user profile:', err);
+    }
+  },
+
+  updateUserUI() {
+    const profile = AppState.userProfile;
+    if (!profile) return;
+    const username = profile.username || 'User';
+    const email = AppState.user?.email || '';
+    const avatar = profile.avatar || username.substring(0, 2).toUpperCase();
+
+    // Sidebar
+    const sidebarUsername = document.getElementById('sidebar-username');
+    const sidebarEmail = document.getElementById('sidebar-email');
+    const sidebarAvatar = document.getElementById('sidebar-avatar');
+    if (sidebarUsername) sidebarUsername.textContent = username;
+    if (sidebarEmail) sidebarEmail.textContent = email;
+    if (sidebarAvatar) sidebarAvatar.textContent = avatar;
+
+    // Header avatar
+    const headerAvatar = document.getElementById('header-avatar');
+    if (headerAvatar) headerAvatar.textContent = avatar;
+
+    // Welcome banner
+    const welcomeH2 = document.querySelector('.welcome-text h2');
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    if (welcomeH2) welcomeH2.textContent = `${greeting}, ${username}! 👋`;
+
+    const welcomeP = document.querySelector('.welcome-text p');
+    if (welcomeP) {
+      if (profile.streak > 0) {
+        welcomeP.textContent = `You're on a ${profile.streak}-day streak. Keep the momentum going.`;
+      } else {
+        welcomeP.textContent = `Welcome back! Ready to quiz today?`;
+      }
+    }
   },
 
   showForm(form) {
@@ -45,8 +146,7 @@ const AuthUI = {
       this.setLoading(btn, true);
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        window.Navigation.goToApp();
-        Toast.show('Welcome back! 👋', 'success');
+        // onAuthStateChanged handles navigation
       } catch (err) {
         Toast.show(this.friendlyError(err.code), 'error');
         this.setLoading(btn, false);
@@ -59,13 +159,31 @@ const AuthUI = {
       e.preventDefault();
       if (!this.validateSignup()) return;
       const btn = document.getElementById('signup-submit-btn');
+      const username = document.getElementById('signup-username').value.trim();
       const email = document.getElementById('signup-email').value.trim();
       const password = document.getElementById('signup-password').value;
       this.setLoading(btn, true);
       try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        window.Navigation.goToApp();
-        Toast.show('Account created! Welcome 🚀', 'success');
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        // Create Firestore user doc
+        const newProfile = {
+          uid: cred.user.uid,
+          username,
+          email,
+          avatar: username.substring(0, 2).toUpperCase(),
+          level: 1,
+          xp: 0,
+          streak: 0,
+          rank: null,
+          quizzesPlayed: 0,
+          quizzesCreated: 0,
+          avgScore: 0,
+          createdAt: serverTimestamp()
+        };
+        await setDoc(doc(db, 'users', cred.user.uid), newProfile);
+        AppState.userProfile = newProfile;
+        Toast.show('Account created! Welcome to QuizForge 🚀', 'success');
+        // onAuthStateChanged handles navigation
       } catch (err) {
         Toast.show(this.friendlyError(err.code), 'error');
         this.setLoading(btn, false);
@@ -99,13 +217,60 @@ const AuthUI = {
       document.getElementById(id)?.addEventListener('click', async () => {
         try {
           await signInWithPopup(auth, googleProvider);
-          window.Navigation.goToApp();
-          Toast.show('Signed in with Google! 🎉', 'success');
+          // onAuthStateChanged handles navigation
         } catch (err) {
-          Toast.show(this.friendlyError(err.code), 'error');
+          if (err.code !== 'auth/popup-closed-by-user') {
+            Toast.show(this.friendlyError(err.code), 'error');
+          }
         }
       });
     });
+  },
+
+  async logout() {
+    try {
+      await signOut(auth);
+      AppState.user = null;
+      AppState.userProfile = null;
+      AppState.isAuthenticated = false;
+      window.Navigation.goToLanding();
+      Toast.show('Signed out successfully', 'info');
+    } catch (err) {
+      Toast.show('Sign out failed, please try again', 'error');
+    }
+  },
+
+  async changePassword(newPassword) {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await updatePassword(user, newPassword);
+      Toast.show('Password updated successfully', 'success');
+    } catch (err) {
+      if (err.code === 'auth/requires-recent-login') {
+        Toast.show('Please sign out and sign in again before changing your password', 'warning');
+      } else {
+        Toast.show(this.friendlyError(err.code), 'error');
+      }
+    }
+  },
+
+  async deleteAccount() {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await deleteUser(user);
+      AppState.user = null;
+      AppState.userProfile = null;
+      window.Navigation.goToLanding();
+      Toast.show('Account deleted', 'info');
+    } catch (err) {
+      if (err.code === 'auth/requires-recent-login') {
+        Toast.show('Please sign out and sign back in to delete your account', 'warning');
+      } else {
+        Toast.show(this.friendlyError(err.code), 'error');
+      }
+    }
   },
 
   bindPasswordToggles() {
@@ -209,7 +374,6 @@ const AuthUI = {
       el.classList.add('hidden');
       el.textContent = '';
     });
-    document.querySelectorAll('.form-input.error').forEach(el => el.classList.remove('error'));
   },
 
   setLoading(btn, loading) {
@@ -230,6 +394,7 @@ const AuthUI = {
     const messages = {
       'auth/user-not-found': 'No account found with this email',
       'auth/wrong-password': 'Incorrect password',
+      'auth/invalid-credential': 'Incorrect email or password',
       'auth/email-already-in-use': 'An account with this email already exists',
       'auth/weak-password': 'Password should be at least 6 characters',
       'auth/invalid-email': 'Please enter a valid email address',

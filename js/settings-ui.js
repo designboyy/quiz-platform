@@ -24,7 +24,6 @@ const SettingsUI = {
       const el = document.getElementById(id);
       if (el) el.checked = val;
     });
-
     const timerMode = document.getElementById('timer-mode-select');
     if (timerMode) timerMode.value = s.timerMode;
   },
@@ -62,19 +61,28 @@ const SettingsUI = {
 
   bindLogout() {
     document.getElementById('logout-btn')?.addEventListener('click', () => {
-      // TODO: Firebase Auth signOut()
-      window.Navigation.goToLanding();
-      Toast.show('Signed out successfully', 'info');
+      if (confirm('Sign out of QuizForge?')) {
+        AuthUI.logout();
+      }
     });
   },
 
   bindDangerZone() {
     document.getElementById('change-password-btn')?.addEventListener('click', () => {
-      Toast.show('Password change will use Firebase Auth', 'info');
+      const newPass = prompt('Enter your new password (min 8 characters):');
+      if (!newPass) return;
+      if (newPass.length < 8) {
+        Toast.show('Password must be at least 8 characters', 'warning');
+        return;
+      }
+      AuthUI.changePassword(newPass);
     });
+
     document.getElementById('delete-account-btn')?.addEventListener('click', () => {
-      if (confirm('Are you sure? This action cannot be undone.')) {
-        Toast.show('Account deletion will use Firebase Auth', 'warning');
+      const confirmed = confirm('This will permanently delete your account and all your data. This cannot be undone. Are you sure?');
+      if (confirmed) {
+        const doubleConfirm = confirm('Last chance — delete your account forever?');
+        if (doubleConfirm) AuthUI.deleteAccount();
       }
     });
   }

@@ -42,7 +42,6 @@ const Animations = {
     }, { passive: true });
   },
 
-  // Button press ripple
   addRipple(btn) {
     btn.addEventListener('click', function(e) {
       const ripple = document.createElement('span');
